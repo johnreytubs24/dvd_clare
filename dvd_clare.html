@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>DVD Bounce with Collision Effects</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: black;
+      overflow: hidden;
+      position: relative;
+    }
+
+    #teamText {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Dancing Script', cursive;
+      font-size: 100px;
+      color: white;
+      opacity: 0.15;
+      z-index: 0;
+      pointer-events: none;
+      user-select: none;
+      transition: font-family 0.5s ease-in-out;
+    }
+
+    #dvd {
+      position: absolute;
+      pointer-events: none;
+      z-index: 1;
+      box-shadow: 0 0 20px 5px rgba(255, 255, 255, 0.5);
+      transition: box-shadow 0.3s ease-out;
+    }
+
+    #dvd img {
+      height: 400px;
+      width: auto;
+      display: block;
+    }
+
+    /* Boom effect */
+    .boom-effect {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      opacity: 0;
+      pointer-events: none;
+      animation: boom 0.6s ease-out forwards;
+    }
+
+    @keyframes boom {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(3);
+      }
+    }
+
+    /* Flash effect */
+    .flash-effect {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.8);
+      border-radius: 50%;
+      opacity: 0;
+      animation: flash 0.5s ease-out forwards;
+    }
+
+    @keyframes flash {
+      0% {
+        opacity: 0.8;
+        transform: scale(0.8);
+      }
+      50% {
+        opacity: 0.4;
+        transform: scale(1.2);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1);
+      }
+    }
+
+    /* Sparkle effect */
+    .sparkle-effect {
+      position: absolute;
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: 50%;
+      opacity: 0;
+      animation: sparkle 0.8s ease-out forwards;
+    }
+
+    @keyframes sparkle {
+      0% {
+        opacity: 1;
+        transform: scale(0);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(1.5);
+      }
+    }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&family=Great+Vibes&family=Sacramento&family=Pacifico&family=Cherry+Cream+Soda&family=Allura&family=Playball&family=Euphoria+Script&family=Bilbo+Swash+Caps&family=Reenie+Beanie&family=Calligraffitti&family=Sacramento&family=Mr+Dafoe&family=Yellowtail&family=Alex+Brush&family=Medula+One&family=Courgette&family=Kaushan+Script&family=Rouge+Script&family=Zilla+Slab+Highlight&family=Kaushan+Script&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="teamText">Team Achieve</div>
+  <div id="dvd"><img id="dvdImage" src="" alt="DVD" /></div>
+
+  <script>
+    const dvd = document.getElementById("dvd");
+    const dvdImage = document.getElementById("dvdImage");
+    const colors = ["red", "blue", "lime", "gold", "deeppink", "cyan", "orange", "magenta", "purple", "green", "yellow", "aqua", "fuchsia"];
+    const imageFiles = [];
+
+    // Load image files from Cloudinary
+    for (let i = 1; i <= 100; i++) {
+      imageFiles.push(`https://res.cloudinary.com/dr2xjesag/image/upload/pics-${i}.jpg`);
+      imageFiles.push(`https://res.cloudinary.com/dr2xjesag/image/upload/pics-${i}.jpeg`);
+    }
+
+    let imageElements = [];
+    let usedImages = [];
+    let posX = 100;
+    let posY = 100;
+    let velX = 2;
+    let velY = 2;
+    let screenWidth, screenHeight;
+
+    const fonts = [
+      'Dancing Script', 'Great Vibes', 'Sacramento', 'Pacifico', 'Cherry Cream Soda', 
+      'Allura', 'Playball', 'Euphoria Script', 'Bilbo Swash Caps', 'Reenie Beanie', 
+      'Calligraffitti', 'Mr Dafoe', 'Yellowtail', 'Alex Brush', 'Medula One', 'Courgette', 
+      'Kaushan Script', 'Rouge Script', 'Zilla Slab Highlight', 'Kaushan Script'
+    ];
+
+    let usedFonts = [];
+
+    function shuffleFonts() {
+      for (let i = fonts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [fonts[i], fonts[j]] = [fonts[j], fonts[i]];
+      }
+    }
+
+    function applyNextFont() {
+      if (usedFonts.length === fonts.length) {
+        usedFonts = [];
+        shuffleFonts();
+      }
+
+      let font;
+      do {
+        font = fonts[Math.floor(Math.random() * fonts.length)];
+      } while (usedFonts.includes(font));
+
+      usedFonts.push(font);
+      document.getElementById("teamText").style.fontFamily = font;
+    }
+
+    // Preload images from Cloudinary
+    function preloadImages(files, callback) {
+      let loaded = 0;
+      const total = files.length;
+
+      files.forEach(file => {
+        const img = new Image();
+        img.onload = () => {
+          imageElements.push(img);
+          loaded++;
+          if (loaded === total) {
+            callback();
+          }
+        };
+        img.onerror = () => {
+          loaded++;
+          if (loaded === total) {
+            callback();
+          }
+        };
+        img.src = file;
+      });
+    }
+
+    function getNextImage() {
+      if (usedImages.length === imageElements.length) {
+        usedImages = [];
+      }
+
+      let nextImage;
+      do {
+        const index = Math.floor(Math.random() * imageElements.length);
+        nextImage = imageElements[index];
+      } while (usedImages.includes(nextImage));
+
+      usedImages.push(nextImage);
+      return nextImage.src;
+    }
+
+    function updateSizeAndPosition() {
+      screenWidth = window.innerWidth;
+      screenHeight = window.innerHeight;
+    }
+
+    function animate() {
+      const bounds = dvd.getBoundingClientRect();
+      const dvdWidth = dvd.offsetWidth;
+      const dvdHeight = dvd.offsetHeight;
+
+      // Detect edge collision
+      if ((posX <= 0 && velX < 0) || (posX + dvdWidth >= screenWidth && velX > 0)) {
+        velX *= -1;
+        applyCollisionEffect();
+        dvdImage.src = getNextImage(); // Change image immediately
+      }
+
+      if ((posY <= 0 && velY < 0) || (posY + dvdHeight >= screenHeight && velY > 0)) {
+        velY *= -1;
+        applyCollisionEffect();
+        dvdImage.src = getNextImage(); // Change image immediately
+      }
+
+      // Update position
+      posX += velX;
+      posY += velY;
+
+      // Apply new position
+      dvd.style.left = `${posX}px`;
+      dvd.style.top = `${posY}px`;
+
+      // Request next frame
+      requestAnimationFrame(animate);
+    }
+
+    function applyCollisionEffect() {
+      // Only apply one effect for better performance
+      if (Math.random() > 0.5) {
+        createFlashEffect();
+      } else {
+        createBoomEffect();
+      }
+
+      applyNextFont(); // Change font on collision
+      updateBoxShadow(); // Update box-shadow on collision
+    }
+
+    // Create flash effect on collision
+    function createFlashEffect() {
+      const flash = document.createElement("div");
+      flash.classList.add("flash-effect");
+      const flashSize = Math.random() * 100 + 50;
+      flash.style.width = `${flashSize}px`;
+      flash.style.height = `${flashSize}px`;
+      flash.style.left = `${posX + 100 - flashSize / 2}px`;
+      flash.style.top = `${posY + 100 - flashSize / 2}px`;
+      document.body.appendChild(flash);
+
+      setTimeout(() => flash.remove(), 500);
+    }
+
+    // Create boom effect on collision
+    function createBoomEffect() {
+      const boom = document.createElement("div");
+      boom.classList.add("boom-effect");
+      const boomSize = Math.random() * 100 + 50;
+      boom.style.width = `${boomSize}px`;
+      boom.style.height = `${boomSize}px`;
+      boom.style.left = `${posX + 100 - boomSize / 2}px`;
+      boom.style.top = `${posY + 100 - boomSize / 2}px`;
+      document.body.appendChild(boom);
+
+      setTimeout(() => boom.remove(), 600);
+    }
+
+    // Update box-shadow color
+    function updateBoxShadow() {
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      dvd.style.boxShadow = `0 0 20px 5px ${randomColor}`;
+    }
+
+    preloadImages(imageFiles, () => {
+      if (imageElements.length === 0) {
+        alert("No valid images found.");
+        return;
+      }
+
+      dvdImage.src = getNextImage(); // Set initial image
+      shuffleFonts(); // Shuffle fonts initially
+      updateSizeAndPosition(); // Set initial screen size
+      animate(); // Start the animation
+    });
+
+    window.addEventListener("resize", updateSizeAndPosition);
+  </script>
+</body>
+</html>
